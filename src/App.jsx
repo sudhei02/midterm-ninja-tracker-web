@@ -25,12 +25,10 @@ import {
   MessageSquare,
   TrendingUp,
   Users,
-  Send,
 } from "lucide-react";
 
 const STORAGE_KEY = "muso-ninja-planner-v2";
 const SISTER_EMAIL_KEY = "muso-sister-email-v1";
-const COMPLETION_LOG_KEY = "muso-completion-log-v1";
 
 const loadProgress = () => {
   try {
@@ -54,31 +52,6 @@ const loadString = (key) => {
     return localStorage.getItem(key) || "";
   } catch {
     return "";
-  }
-};
-
-const saveString = (key, value) => {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // Ignore storage write errors.
-  }
-};
-
-const loadCompletionLog = () => {
-  try {
-    const raw = localStorage.getItem(COMPLETION_LOG_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveCompletionLog = (log) => {
-  try {
-    localStorage.setItem(COMPLETION_LOG_KEY, JSON.stringify(log));
-  } catch {
-    // Ignore storage write errors.
   }
 };
 
@@ -159,38 +132,6 @@ const buildTaskEmailHref = ({ sisterEmail, day, block, task, completedCount, tot
     "He wants a quick hint or example.",
     "",
     "Please keep it short.",
-    "",
-    "Thank you.",
-  ].join("\n");
-
-  return `mailto:${sisterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-};
-
-const buildProgressEmailHref = ({ sisterEmail, progress, completionLog }) => {
-  if (!sisterEmail) return null;
-
-  const totalTasks = SCHEDULE.reduce(
-    (a, day) => a + day.blocks.reduce((b, bl) => b + bl.tasks.length, 0),
-    0
-  );
-  const doneTasks = Object.values(progress).filter(Boolean).length;
-  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-  const recent = completionLog.slice(0, 5);
-  const subject = `Muso progress update: ${doneTasks}/${totalTasks} tasks complete (${pct}%)`;
-  const body = [
-    `Hi Sister,`,
-    "",
-    `Here is Muso's latest study update: ${doneTasks}/${totalTasks} tasks complete (${pct}%).`,
-    "",
-    "Recent completed tasks:",
-    ...(recent.length > 0
-      ? recent.map(
-          (item) =>
-            `- Day ${item.dayNum}: ${item.course} | ${item.focus} | ${item.task}`
-        )
-      : ["- No tasks completed yet."]),
-    "",
-    "He is still working through the plan. Please help if he gets stuck.",
     "",
     "Thank you.",
   ].join("\n");
@@ -1073,7 +1014,6 @@ function StudyBlock({
   blockIdx,
   progress,
   setProgress,
-  setCompletionLog,
   sisterEmail,
 }) {
   const style = priorityStyles[block.priority];
@@ -1083,34 +1023,11 @@ function StudyBlock({
 
   const toggleTask = (taskIdx) => {
     const key = `${dayNum}-${blockIdx}-${taskIdx}`;
-    const task = block.tasks[taskIdx];
-    const wasChecked = !!progress[key];
     setProgress((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       saveProgress(next);
       return next;
     });
-    if (!wasChecked) {
-      const doneCount = block.tasks.filter(
-        (_, i) => i === taskIdx || progress[`${dayNum}-${blockIdx}-${i}`]
-      ).length;
-      setCompletionLog((prev) => {
-        const entry = {
-          id: `${dayNum}-${blockIdx}-${taskIdx}-${prev.length + 1}`,
-          dayNum,
-          day: day.day,
-          course: block.course,
-          focus: block.focus,
-          task,
-          doneCount,
-          totalTasks,
-          pct: totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0,
-        };
-        const next = [entry, ...prev].slice(0, 12);
-        saveCompletionLog(next);
-        return next;
-      });
-    }
   };
 
   const completedCount = block.tasks.filter(
@@ -1246,7 +1163,6 @@ function DayCard({
   day,
   progress,
   setProgress,
-  setCompletionLog,
   sisterEmail,
 }) {
   const [open, setOpen] = useState(false);
@@ -1400,7 +1316,6 @@ function DayCard({
               blockIdx={bi}
               progress={progress}
               setProgress={setProgress}
-              setCompletionLog={setCompletionLog}
               sisterEmail={sisterEmail}
             />
           ))}
@@ -1503,19 +1418,8 @@ function OverallProgress({ progress }) {
 
 export default function NinjaPlanner() {
   const [progress, setProgress] = useState(loadProgress);
-  const [completionLog, setCompletionLog] = useState(loadCompletionLog);
-  const [sisterEmail, setSisterEmail] = useState(() =>
-    loadString(SISTER_EMAIL_KEY)
-  );
+  const sisterEmail = loadString(SISTER_EMAIL_KEY);
   const [tab, setTab] = useState("schedule");
-
-  useEffect(() => {
-    saveCompletionLog(completionLog);
-  }, [completionLog]);
-
-  useEffect(() => {
-    saveString(SISTER_EMAIL_KEY, sisterEmail);
-  }, [sisterEmail]);
 
   const totalTasks = SCHEDULE.reduce(
     (a, day) => a + day.blocks.reduce((b, bl) => b + bl.tasks.length, 0),
@@ -1525,11 +1429,6 @@ export default function NinjaPlanner() {
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const motivationalQuote =
     MOTIVATIONAL_QUOTES[pct % MOTIVATIONAL_QUOTES.length];
-  const progressUpdateHref = buildProgressEmailHref({
-    sisterEmail,
-    progress,
-    completionLog,
-  });
 
   return (
     <div
@@ -1713,118 +1612,6 @@ export default function NinjaPlanner() {
           <>
             <OverallProgress progress={progress} />
 
-            <div
-              style={{
-                background: "#10131f",
-                border: "1px solid #1e1e3a",
-                borderRadius: 14,
-                padding: 16,
-                marginBottom: 18,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#eee" }}>
-                    Sister update panel
-                  </div>
-                  <div style={{ fontSize: 11, color: "#8e98ab", marginTop: 3 }}>
-                    Track progress and send a quick update.
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: "#ffd166", fontWeight: 700 }}>
-                  {doneTasks}/{totalTasks} done · {pct}%
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  marginTop: 12,
-                }}
-              >
-                <input
-                  value={sisterEmail}
-                  onChange={(event) => setSisterEmail(event.target.value)}
-                  placeholder="sister@email.com"
-                  style={{
-                    flex: "1 1 220px",
-                    background: "#0f0f1a",
-                    border: "1px solid #2c3144",
-                    borderRadius: 10,
-                    color: "#eee",
-                    padding: "10px 12px",
-                    fontFamily: "inherit",
-                    fontSize: 12,
-                  }}
-                />
-                <a
-                  href={progressUpdateHref || undefined}
-                  onClick={(event) => {
-                    if (!progressUpdateHref) {
-                      event.preventDefault();
-                    }
-                  }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: progressUpdateHref ? "#ffd166" : "#2c3144",
-                    color: progressUpdateHref ? "#0f0f1a" : "#556070",
-                    textDecoration: "none",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: progressUpdateHref ? "pointer" : "not-allowed",
-                  }}
-                >
-                  <Send size={13} />
-                  Send progress update
-                </a>
-              </div>
-
-              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                {completionLog.length > 0 ? (
-                  completionLog.slice(0, 3).map((item) => (
-                    <div
-                      key={item.id}
-                      style={{
-                        background: "#0f0f1a",
-                        border: "1px solid #1e1e3a",
-                        borderRadius: 10,
-                        padding: "8px 10px",
-                        fontSize: 11,
-                        color: "#cbd5e1",
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      <strong style={{ color: courseColors[item.course] || "#ffd166" }}>
-                        Day {item.dayNum}:
-                      </strong>{" "}
-                      {item.course} · {item.focus} · {item.task}
-                      <div style={{ color: "#8e98ab", marginTop: 2 }}>
-                        {item.doneCount}/{item.totalTasks} done on that block · {item.pct}%
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ fontSize: 11, color: "#8e98ab" }}>
-                    No completed tasks yet.
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Phase labels */}
             <div
               style={{
@@ -1848,7 +1635,6 @@ export default function NinjaPlanner() {
                 day={day}
                 progress={progress}
                 setProgress={setProgress}
-                setCompletionLog={setCompletionLog}
                 sisterEmail={sisterEmail}
               />
             ))}
@@ -1876,7 +1662,6 @@ export default function NinjaPlanner() {
                   day={day}
                   progress={progress}
                   setProgress={setProgress}
-                  setCompletionLog={setCompletionLog}
                   sisterEmail={sisterEmail}
                 />
               )
@@ -1904,7 +1689,6 @@ export default function NinjaPlanner() {
                 day={day}
                 progress={progress}
                 setProgress={setProgress}
-                setCompletionLog={setCompletionLog}
                 sisterEmail={sisterEmail}
               />
             ))}
@@ -2348,8 +2132,6 @@ export default function NinjaPlanner() {
                 ) {
                   setProgress({});
                   saveProgress({});
-                  setCompletionLog([]);
-                  saveCompletionLog([]);
                 }
               }}
               style={{
