@@ -84,28 +84,20 @@ const saveCompletionLog = (log) => {
 
 const COURSE_GUIDANCE = {
   MATH103: {
-    sources:
-      "lecture slides, class notes, LMS files, tutorial sheets, and any worked examples your lecturer posted. If you only have Teams, check the shared files and chat history there too.",
-    fallback:
-      "If you still cannot find it, search the chapter title in the LMS, then check Teams for PDFs, screenshots, or voice notes from class.",
+    sources: "Check slides, LMS, notes, or Teams.",
+    fallback: "If unsure, ask sister.",
   },
   MGMT211: {
-    sources:
-      "lecture slides, LMS notes, textbook summaries, and the class group chat for file uploads or reminders.",
-    fallback:
-      "Look for the chapter title in the LMS first, then use your slides to match the keywords and definitions.",
+    sources: "Check slides, LMS notes, or class chat.",
+    fallback: "If unsure, ask sister.",
   },
   ECON102: {
-    sources:
-      "lecture slides, LMS course group, and Microsoft Teams for ECON102. If you only have Teams, check the files, pinned messages, and chat replies for the chapter resources.",
-    fallback:
-      "If you are stuck, use the chapter heading to search Teams or the LMS, then compare it with the notes and examples you already have.",
+    sources: "Check slides, LMS, and ECON102 Teams.",
+    fallback: "If unsure, ask sister.",
   },
   MGMT202: {
-    sources:
-      "lecture slides, course outline, lecture notes, and any class handouts or uploaded examples from the LMS.",
-    fallback:
-      "If the chapter is unclear, match the topic title from the outline to the slides and write the key definitions in your own words.",
+    sources: "Check slides, outline, notes, or LMS handouts.",
+    fallback: "If unsure, ask sister.",
   },
 };
 
@@ -123,7 +115,7 @@ const getTaskStarter = (task, block) => {
   const text = `${task} ${block.focus}`.toLowerCase();
 
   if (text.includes("cheat sheet") || text.includes("formula")) {
-    return "Start like this: title the page, write the main formulas from your slides, then add one tiny example under each formula so you can see how it works.";
+    return "Write the formulas, then add 1 short example.";
   }
 
   if (
@@ -132,22 +124,22 @@ const getTaskStarter = (task, block) => {
     text.includes("quiz") ||
     text.includes("mock exam")
   ) {
-    return "Start like this: do one worked example first, then try the first 2 questions slowly, and after that rewrite the ones you missed without looking at the answer.";
+    return "Do 1 example first, then try the first 2 questions.";
   }
 
   if (text.includes("define") || text.includes("definition")) {
-    return "Start like this: write the term, write the meaning in your own words, then add one simple example from class or real life.";
+    return "Write the term, meaning, and 1 example.";
   }
 
   if (text.includes("essay") || text.includes("outline")) {
-    return "Start like this: write the topic sentence, add 2 main points, then finish with one short example or evidence line.";
+    return "Write the topic, 2 points, then 1 example.";
   }
 
   if (text.includes("read") || text.includes("skim") || text.includes("review")) {
-    return "Start like this: read one heading at a time, highlight the key idea, and then say it back out loud in one sentence.";
+    return "Read one heading, highlight the key idea, move on.";
   }
 
-  return "Start like this: take the first small step, then compare your work with the notes or slides before moving on.";
+  return "Start small, then check your notes or slides.";
 };
 
 const buildTaskEmailHref = ({ sisterEmail, day, block, task, completedCount, totalTasks }) => {
@@ -164,8 +156,9 @@ const buildTaskEmailHref = ({ sisterEmail, day, block, task, completedCount, tot
     `Task: ${task}`,
     `Progress so far: ${completedCount}/${totalTasks} tasks complete (${pct}%).`,
     "",
-    "He is stuck on this part and wants a hint or example, not the full answer.",
-    "If you can, please explain it in a simple step-by-step way.",
+    "He wants a quick hint or example.",
+    "",
+    "Please keep it short.",
     "",
     "Thank you.",
   ].join("\n");
@@ -197,7 +190,7 @@ const buildProgressEmailHref = ({ sisterEmail, progress, completionLog }) => {
         )
       : ["- No tasks completed yet."]),
     "",
-    "He is still working through the plan and can ask you for help when he gets stuck.",
+    "He is still working through the plan. Please help if he gets stuck.",
     "",
     "Thank you.",
   ].join("\n");
@@ -1010,7 +1003,7 @@ function TaskItem({
         }}
       >
         <div style={{ fontSize: 11, color: "#8e98ab", lineHeight: 1.5 }}>
-          <strong style={{ color: "#cbd5e1" }}>Where to look:</strong>{" "}
+          <strong style={{ color: "#cbd5e1" }}>Where:</strong>{" "}
           {sourceHint}
         </div>
         <div
@@ -1021,7 +1014,7 @@ function TaskItem({
             marginTop: 4,
           }}
         >
-          <strong style={{ color: "#cbd5e1" }}>How to start:</strong>{" "}
+          <strong style={{ color: "#cbd5e1" }}>Start:</strong>{" "}
           {starterHint}
         </div>
         <div
@@ -1035,7 +1028,7 @@ function TaskItem({
           }}
         >
           <span style={{ fontSize: 10, color: "#7f8ea3" }}>
-            If this is unclear, ask sister before you get stuck for too long.
+            If stuck, ask sister.
           </span>
           <a
             href={askHref || undefined}
@@ -1195,7 +1188,7 @@ function StudyBlock({
         }}
       >
         <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.5 }}>
-          <strong style={{ color: courseColor }}>Where to find it:</strong>{" "}
+          <strong style={{ color: courseColor }}>Where:</strong>{" "}
           {courseGuide.sources}
         </div>
         <div
@@ -1662,8 +1655,7 @@ export default function NinjaPlanner() {
             REALISTIC PUSH
           </div>
           <div style={{ fontSize: 12, color: "#ddd", lineHeight: 1.6, marginTop: 6 }}>
-            {motivationalQuote} If something is unclear, ask sister instead of
-            staying stuck.
+            {motivationalQuote} If something is unclear, ask sister.
           </div>
         </div>
       </div>
@@ -1744,8 +1736,7 @@ export default function NinjaPlanner() {
                     Sister update panel
                   </div>
                   <div style={{ fontSize: 11, color: "#8e98ab", marginTop: 3 }}>
-                    Track completed tasks and send an email update when Muso
-                    wants to keep you posted.
+                    Track progress and send a quick update.
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: "#ffd166", fontWeight: 700 }}>
@@ -1828,7 +1819,7 @@ export default function NinjaPlanner() {
                   ))
                 ) : (
                   <div style={{ fontSize: 11, color: "#8e98ab" }}>
-                    No completed tasks yet. The first checkmark will show up here.
+                    No completed tasks yet.
                   </div>
                 )}
               </div>
@@ -2261,16 +2252,16 @@ export default function NinjaPlanner() {
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                 <Heart size={16} color="#ff6b6b" />
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#eee" }}>
-                  Sister support and quotes
+                  Need help?
                 </span>
               </div>
               <div style={{ fontSize: 12, color: "#bbb", lineHeight: 1.7 }}>
                 <p style={{ margin: "0 0 8px" }}>
-                  If Muso does not understand something, he should hit the{" "}
-                  <strong style={{ color: "#ffd166" }}>Ask sister!</strong> button on the task and send a short note.
+                  If Muso is stuck, tap{" "}
+                  <strong style={{ color: "#ffd166" }}>Ask sister!</strong> and send a short note.
                 </p>
                 <p style={{ margin: "0 0 12px" }}>
-                  Keep the message short and clear. Example: Day 2, Ch2 system of linear equations, I do not know how to write 3 equations with 2 unknowns.
+                  Example: Day 2, Ch2 system of linear equations, need help with 3 equations and 2 unknowns.
                 </p>
                 <div style={{ display: "grid", gap: 8 }}>
                   {MOTIVATIONAL_QUOTES.slice(0, 3).map((quote, index) => (
