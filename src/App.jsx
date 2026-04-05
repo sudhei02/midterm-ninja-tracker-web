@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Swords,
   Shield,
@@ -28,21 +28,71 @@ import {
 } from "lucide-react";
 
 const STORAGE_KEY = "muso-ninja-planner-v2";
+const REMOTE_PROGRESS_ENDPOINT = "/.netlify/functions/progress";
+const STUDENT_ID = "brother";
 
-const loadProgress = () => {
+const normalizeProgressState = (raw) => {
+  if (!raw || typeof raw !== "object") {
+    return { data: {}, updatedAt: 0 };
+  }
+
+  if (raw.data && typeof raw.data === "object") {
+    return {
+      data: raw.data,
+      updatedAt: Number(raw.updatedAt) || 0,
+    };
+  }
+
+  return {
+    data: raw,
+    updatedAt: Number(raw.updatedAt) || 0,
+  };
+};
+
+const loadProgressState = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    return normalizeProgressState(parsed);
   } catch {
-    return {};
+    return { data: {}, updatedAt: 0 };
   }
 };
 
-const saveProgress = (p) => {
+const saveProgressState = (progressState) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progressState));
   } catch {
     // Ignore storage write errors (private mode or storage limits).
+  }
+};
+
+const fetchRemoteProgressState = async () => {
+  const response = await fetch(
+    `${REMOTE_PROGRESS_ENDPOINT}?studentId=${encodeURIComponent(STUDENT_ID)}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to load cloud progress (${response.status})`);
+  }
+
+  const body = await response.json();
+  return normalizeProgressState(body.progressState);
+};
+
+const pushRemoteProgressState = async (progressState, totalTasks) => {
+  const response = await fetch(REMOTE_PROGRESS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      studentId: STUDENT_ID,
+      progressState,
+      totalTasks,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to save cloud progress (${response.status})`);
   }
 };
 
@@ -946,7 +996,6 @@ function StudyBlock({
     const key = `${dayNum}-${blockIdx}-${taskIdx}`;
     setProgress((prev) => {
       const next = { ...prev, [key]: !prev[key] };
-      saveProgress(next);
       return next;
     });
   };
@@ -1326,8 +1375,13 @@ function OverallProgress({ progress }) {
 }
 
 export default function NinjaPlanner() {
-  const [progress, setProgress] = useState(loadProgress);
+  const [progressState, setProgressState] = useState(loadProgressState);
   const [tab, setTab] = useState("schedule");
+  const [syncStatus, setSyncStatus] = useState("syncing");
+  const syncTimerRef = useRef(null);
+  const bootstrappedRef = useRef(false);
+
+  const progress = progressState.data;
 
   const totalTasks = SCHEDULE.reduce(
     (a, day) => a + day.blocks.reduce((b, bl) => b + bl.tasks.length, 0),
@@ -1337,6 +1391,82 @@ export default function NinjaPlanner() {
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const motivationalQuote =
     MOTIVATIONAL_QUOTES[pct % MOTIVATIONAL_QUOTES.length];
+
+  const queueCloudSync = (nextProgressState) => {
+    if (!bootstrappedRef.current) return;
+
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+    }
+
+    syncTimerRef.current = setTimeout(async () => {
+      try {
+        setSyncStatus("syncing");
+        await pushRemoteProgressState(nextProgressState, totalTasks);
+        setSyncStatus("saved");
+      } catch {
+        setSyncStatus("offline");
+      }
+    }, 800);
+  };
+
+  const setProgress = (updater) => {
+    setProgressState((prevState) => {
+      const prev = prevState.data;
+      const nextData =
+        typeof updater === "function" ? updater(prev) : updater;
+
+      const nextProgressState = {
+        data: nextData,
+        updatedAt: Date.now(),
+      };
+
+      saveProgressState(nextProgressState);
+      queueCloudSync(nextProgressState);
+      return nextProgressState;
+    });
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrapProgress = async () => {
+      const localState = loadProgressState();
+      setSyncStatus("syncing");
+
+      try {
+        const remoteState = await fetchRemoteProgressState();
+
+        if (cancelled) return;
+
+        if (remoteState.updatedAt > localState.updatedAt) {
+          setProgressState(remoteState);
+          saveProgressState(remoteState);
+        } else if (localState.updatedAt > remoteState.updatedAt) {
+          await pushRemoteProgressState(localState, totalTasks);
+        }
+
+        if (!cancelled) {
+          bootstrappedRef.current = true;
+          setSyncStatus("saved");
+        }
+      } catch {
+        if (!cancelled) {
+          bootstrappedRef.current = true;
+          setSyncStatus("offline");
+        }
+      }
+    };
+
+    bootstrapProgress();
+
+    return () => {
+      cancelled = true;
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+    };
+  }, [totalTasks]);
 
   return (
     <div
@@ -1397,6 +1527,27 @@ export default function NinjaPlanner() {
         >
           April 5 - 20, 2026 &middot; 4 Exams &middot; 16 Days &middot; One
           Ninja
+        </div>
+
+        <div
+          style={{
+            fontSize: 11,
+            color:
+              syncStatus === "saved"
+                ? "#4ecdc4"
+                : syncStatus === "offline"
+                ? "#ffd166"
+                : "#888",
+            marginTop: 8,
+            fontWeight: 600,
+            letterSpacing: 0.4,
+          }}
+        >
+          {syncStatus === "saved"
+            ? "Cloud save: synced"
+            : syncStatus === "offline"
+            ? "Cloud save: offline (local save still works)"
+            : "Cloud save: syncing..."}
         </div>
 
         {/* Motivational block */}
@@ -2036,7 +2187,6 @@ export default function NinjaPlanner() {
                   )
                 ) {
                   setProgress({});
-                  saveProgress({});
                 }
               }}
               style={{
