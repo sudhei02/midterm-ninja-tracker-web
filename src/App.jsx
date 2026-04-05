@@ -25,9 +25,12 @@ import {
   MessageSquare,
   TrendingUp,
   Users,
+  Send,
 } from "lucide-react";
 
 const STORAGE_KEY = "muso-ninja-planner-v2";
+const SISTER_EMAIL_KEY = "muso-sister-email-v1";
+const COMPLETION_LOG_KEY = "muso-completion-log-v1";
 
 const loadProgress = () => {
   try {
@@ -44,6 +47,162 @@ const saveProgress = (p) => {
   } catch {
     // Ignore storage write errors (private mode or storage limits).
   }
+};
+
+const loadString = (key) => {
+  try {
+    return localStorage.getItem(key) || "";
+  } catch {
+    return "";
+  }
+};
+
+const saveString = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage write errors.
+  }
+};
+
+const loadCompletionLog = () => {
+  try {
+    const raw = localStorage.getItem(COMPLETION_LOG_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveCompletionLog = (log) => {
+  try {
+    localStorage.setItem(COMPLETION_LOG_KEY, JSON.stringify(log));
+  } catch {
+    // Ignore storage write errors.
+  }
+};
+
+const COURSE_GUIDANCE = {
+  MATH103: {
+    sources:
+      "lecture slides, class notes, LMS files, tutorial sheets, and any worked examples your lecturer posted. If you only have Teams, check the shared files and chat history there too.",
+    fallback:
+      "If you still cannot find it, search the chapter title in the LMS, then check Teams for PDFs, screenshots, or voice notes from class.",
+  },
+  MGMT211: {
+    sources:
+      "lecture slides, LMS notes, textbook summaries, and the class group chat for file uploads or reminders.",
+    fallback:
+      "Look for the chapter title in the LMS first, then use your slides to match the keywords and definitions.",
+  },
+  ECON102: {
+    sources:
+      "lecture slides, LMS course group, and Microsoft Teams for ECON102. If you only have Teams, check the files, pinned messages, and chat replies for the chapter resources.",
+    fallback:
+      "If you are stuck, use the chapter heading to search Teams or the LMS, then compare it with the notes and examples you already have.",
+  },
+  MGMT202: {
+    sources:
+      "lecture slides, course outline, lecture notes, and any class handouts or uploaded examples from the LMS.",
+    fallback:
+      "If the chapter is unclear, match the topic title from the outline to the slides and write the key definitions in your own words.",
+  },
+};
+
+const MOTIVATIONAL_QUOTES = [
+  "You do not need a perfect day. You need a repeatable one.",
+  "Small focused sessions beat one heroic cram night.",
+  "If today feels messy, keep going anyway. Consistency is what changes the result.",
+  "You can be nervous and still be effective. Do the next step, not the whole exam at once.",
+  "Ask for help early. That is a smart move, not a weak one.",
+];
+
+const getCourseGuidance = (course) => COURSE_GUIDANCE[course] || COURSE_GUIDANCE.MATH103;
+
+const getTaskStarter = (task, block) => {
+  const text = `${task} ${block.focus}`.toLowerCase();
+
+  if (text.includes("cheat sheet") || text.includes("formula")) {
+    return "Start like this: title the page, write the main formulas from your slides, then add one tiny example under each formula so you can see how it works.";
+  }
+
+  if (
+    text.includes("practice") ||
+    text.includes("problem set") ||
+    text.includes("quiz") ||
+    text.includes("mock exam")
+  ) {
+    return "Start like this: do one worked example first, then try the first 2 questions slowly, and after that rewrite the ones you missed without looking at the answer.";
+  }
+
+  if (text.includes("define") || text.includes("definition")) {
+    return "Start like this: write the term, write the meaning in your own words, then add one simple example from class or real life.";
+  }
+
+  if (text.includes("essay") || text.includes("outline")) {
+    return "Start like this: write the topic sentence, add 2 main points, then finish with one short example or evidence line.";
+  }
+
+  if (text.includes("read") || text.includes("skim") || text.includes("review")) {
+    return "Start like this: read one heading at a time, highlight the key idea, and then say it back out loud in one sentence.";
+  }
+
+  return "Start like this: take the first small step, then compare your work with the notes or slides before moving on.";
+};
+
+const buildTaskEmailHref = ({ sisterEmail, day, block, task, completedCount, totalTasks }) => {
+  if (!sisterEmail) return null;
+
+  const pct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+  const subject = `Day ${day.dayNum}: ${block.focus} - Muso needs help with ${task}`;
+  const body = [
+    `Hi Sister,`,
+    "",
+    `Muso is working on Day ${day.dayNum} (${day.day}).`,
+    `Course: ${block.course}`,
+    `Focus: ${block.focus}`,
+    `Task: ${task}`,
+    `Progress so far: ${completedCount}/${totalTasks} tasks complete (${pct}%).`,
+    "",
+    "He is stuck on this part and wants a hint or example, not the full answer.",
+    "If you can, please explain it in a simple step-by-step way.",
+    "",
+    "Thank you.",
+  ].join("\n");
+
+  return `mailto:${sisterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+
+const buildProgressEmailHref = ({ sisterEmail, progress, completionLog }) => {
+  if (!sisterEmail) return null;
+
+  const totalTasks = SCHEDULE.reduce(
+    (a, day) => a + day.blocks.reduce((b, bl) => b + bl.tasks.length, 0),
+    0
+  );
+  const doneTasks = Object.values(progress).filter(Boolean).length;
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const recent = completionLog.slice(0, 5);
+  const subject = `Muso progress update: ${doneTasks}/${totalTasks} tasks complete (${pct}%)`;
+  const body = [
+    `Hi Sister,`,
+    "",
+    `Here is Muso's latest study update: ${doneTasks}/${totalTasks} tasks complete (${pct}%).`,
+    "",
+    "Recent completed tasks:",
+    ...(recent.length > 0
+      ? recent.map(
+          (item) =>
+            `- Day ${item.dayNum}: ${item.course} | ${item.focus} | ${item.task}`
+        )
+      : ["- No tasks completed yet."]),
+    "",
+    "He is still working through the plan and can ask you for help when he gets stuck.",
+    "",
+    "Thank you.",
+  ].join("\n");
+
+  return `mailto:${sisterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
 
 const EXAM_INFO = [
@@ -793,58 +952,172 @@ function PomodoroTimer() {
   );
 }
 
-function TaskItem({ task, checked, onToggle }) {
+function TaskItem({
+  task,
+  checked,
+  onToggle,
+  sourceHint,
+  starterHint,
+  askHref,
+  sisterEmail,
+}) {
   return (
-    <div
-      onClick={onToggle}
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 10,
-        cursor: "pointer",
-        padding: "6px 0",
-        opacity: checked ? 0.5 : 1,
-        transition: "opacity 0.2s",
-      }}
-    >
-      {checked ? (
-        <CheckCircle2
-          size={16}
-          color="#4ecdc4"
-          style={{ marginTop: 2, flexShrink: 0 }}
-        />
-      ) : (
-        <Circle
-          size={16}
-          color="#555"
-          style={{ marginTop: 2, flexShrink: 0 }}
-        />
-      )}
-      <span
+    <div style={{ padding: "6px 0" }}>
+      <div
+        onClick={onToggle}
         style={{
-          fontSize: 13,
-          color: checked ? "#555" : "#ccc",
-          textDecoration: checked ? "line-through" : "none",
-          lineHeight: 1.5,
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          cursor: "pointer",
+          opacity: checked ? 0.5 : 1,
+          transition: "opacity 0.2s",
         }}
       >
-        {task}
-      </span>
+        {checked ? (
+          <CheckCircle2
+            size={16}
+            color="#4ecdc4"
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+        ) : (
+          <Circle
+            size={16}
+            color="#555"
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+        )}
+        <span
+          style={{
+            fontSize: 13,
+            color: checked ? "#555" : "#ccc",
+            textDecoration: checked ? "line-through" : "none",
+            lineHeight: 1.5,
+            flex: 1,
+          }}
+        >
+          {task}
+        </span>
+      </div>
+      <div
+        style={{
+          marginLeft: 26,
+          marginTop: 4,
+          padding: "8px 10px",
+          borderRadius: 8,
+          background: "#0f0f1a",
+          border: "1px solid #1e1e3a",
+        }}
+      >
+        <div style={{ fontSize: 11, color: "#8e98ab", lineHeight: 1.5 }}>
+          <strong style={{ color: "#cbd5e1" }}>Where to look:</strong>{" "}
+          {sourceHint}
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "#8e98ab",
+            lineHeight: 1.5,
+            marginTop: 4,
+          }}
+        >
+          <strong style={{ color: "#cbd5e1" }}>How to start:</strong>{" "}
+          {starterHint}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+            marginTop: 8,
+          }}
+        >
+          <span style={{ fontSize: 10, color: "#7f8ea3" }}>
+            If this is unclear, ask sister before you get stuck for too long.
+          </span>
+          <a
+            href={askHref || undefined}
+            onClick={(event) => {
+              if (!sisterEmail) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+              }
+              event.stopPropagation();
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 0.4,
+              color: sisterEmail ? "#ffd166" : "#556070",
+              textDecoration: "none",
+              background: sisterEmail ? "#ffd16618" : "#1c2030",
+              border: `1px solid ${sisterEmail ? "#ffd16633" : "#2c3144"}`,
+              borderRadius: 999,
+              padding: "6px 10px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              cursor: sisterEmail ? "pointer" : "not-allowed",
+            }}
+          >
+            <MessageSquare size={11} />
+            Ask sister!
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
 
-function StudyBlock({ block, dayNum, blockIdx, progress, setProgress }) {
+function StudyBlock({
+  block,
+  day,
+  dayNum,
+  blockIdx,
+  progress,
+  setProgress,
+  setCompletionLog,
+  sisterEmail,
+}) {
   const style = priorityStyles[block.priority];
   const courseColor = courseColors[block.course] || "#888";
+  const courseGuide = getCourseGuidance(block.course);
+  const totalTasks = block.tasks.length;
 
   const toggleTask = (taskIdx) => {
     const key = `${dayNum}-${blockIdx}-${taskIdx}`;
+    const task = block.tasks[taskIdx];
+    const wasChecked = !!progress[key];
     setProgress((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       saveProgress(next);
       return next;
     });
+    if (!wasChecked) {
+      const doneCount = block.tasks.filter(
+        (_, i) => i === taskIdx || progress[`${dayNum}-${blockIdx}-${i}`]
+      ).length;
+      setCompletionLog((prev) => {
+        const entry = {
+          id: `${dayNum}-${blockIdx}-${taskIdx}-${prev.length + 1}`,
+          dayNum,
+          day: day.day,
+          course: block.course,
+          focus: block.focus,
+          task,
+          doneCount,
+          totalTasks,
+          pct: totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0,
+        };
+        const next = [entry, ...prev].slice(0, 12);
+        saveCompletionLog(next);
+        return next;
+      });
+    }
   };
 
   const completedCount = block.tasks.filter(
@@ -912,6 +1185,30 @@ function StudyBlock({ block, dayNum, blockIdx, progress, setProgress }) {
       >
         {block.focus}
       </div>
+      <div
+        style={{
+          background: "#0f0f1a",
+          border: "1px solid #1e1e3a",
+          borderRadius: 8,
+          padding: "8px 10px",
+          marginBottom: 10,
+        }}
+      >
+        <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.5 }}>
+          <strong style={{ color: courseColor }}>Where to find it:</strong>{" "}
+          {courseGuide.sources}
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "#8e98ab",
+            lineHeight: 1.5,
+            marginTop: 4,
+          }}
+        >
+          {courseGuide.fallback}
+        </div>
+      </div>
       <div>
         {block.tasks.map((task, i) => (
           <TaskItem
@@ -919,6 +1216,17 @@ function StudyBlock({ block, dayNum, blockIdx, progress, setProgress }) {
             task={task}
             checked={!!progress[`${dayNum}-${blockIdx}-${i}`]}
             onToggle={() => toggleTask(i)}
+            sourceHint={courseGuide.sources}
+            starterHint={getTaskStarter(task, block)}
+            askHref={buildTaskEmailHref({
+              sisterEmail,
+              day,
+              block,
+              task,
+              completedCount,
+              totalTasks,
+            })}
+            sisterEmail={sisterEmail}
           />
         ))}
       </div>
@@ -934,14 +1242,20 @@ function StudyBlock({ block, dayNum, blockIdx, progress, setProgress }) {
             gap: 4,
           }}
         >
-          <Sparkles size={12} /> Block complete! Nice work, ninja.
+          <Sparkles size={12} /> Block complete! Nice work, ninja. Tell sister if you want a quick sanity check.
         </div>
       )}
     </div>
   );
 }
 
-function DayCard({ day, progress, setProgress }) {
+function DayCard({
+  day,
+  progress,
+  setProgress,
+  setCompletionLog,
+  sisterEmail,
+}) {
   const [open, setOpen] = useState(false);
 
   const totalTasks = day.blocks.reduce((a, b) => a + b.tasks.length, 0);
@@ -1088,10 +1402,13 @@ function DayCard({ day, progress, setProgress }) {
             <StudyBlock
               key={bi}
               block={block}
+              day={day}
               dayNum={day.dayNum}
               blockIdx={bi}
               progress={progress}
               setProgress={setProgress}
+              setCompletionLog={setCompletionLog}
+              sisterEmail={sisterEmail}
             />
           ))}
         </div>
@@ -1193,7 +1510,33 @@ function OverallProgress({ progress }) {
 
 export default function NinjaPlanner() {
   const [progress, setProgress] = useState(loadProgress);
+  const [completionLog, setCompletionLog] = useState(loadCompletionLog);
+  const [sisterEmail, setSisterEmail] = useState(() =>
+    loadString(SISTER_EMAIL_KEY)
+  );
   const [tab, setTab] = useState("schedule");
+
+  useEffect(() => {
+    saveCompletionLog(completionLog);
+  }, [completionLog]);
+
+  useEffect(() => {
+    saveString(SISTER_EMAIL_KEY, sisterEmail);
+  }, [sisterEmail]);
+
+  const totalTasks = SCHEDULE.reduce(
+    (a, day) => a + day.blocks.reduce((b, bl) => b + bl.tasks.length, 0),
+    0
+  );
+  const doneTasks = Object.values(progress).filter(Boolean).length;
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const motivationalQuote =
+    MOTIVATIONAL_QUOTES[pct % MOTIVATIONAL_QUOTES.length];
+  const progressUpdateHref = buildProgressEmailHref({
+    sisterEmail,
+    progress,
+    completionLog,
+  });
 
   return (
     <div
@@ -1293,16 +1636,35 @@ export default function NinjaPlanner() {
               margin: 0,
             }}
           >
-            Look. Four exams in eight days sounds scary but it's really not
-            if you break it down. That's exactly what this plan does.
-            You've already survived worse semesters. Math is the big one
-            and you know it - that's why it gets the most days. The others?
-            Conceptual stuff you can handle with focused reading. Two exams
-            in one day is rough but the afternoon one is all definitions
-            and essays, and you'll have prepped for days by then. Show up,
-            stay consistent, don't try to be perfect. Just be better than
-            yesterday. That's how ninjas actually train.
+            Look. Four exams in eight days sounds heavy, but it is still
+            manageable when you break it into small pieces. Math gets the
+            biggest share because it needs repetition. The other classes are
+            mostly reading, definitions, and practice. Two exams in one day is
+            rough, but it is not impossible when you prepare early and rest
+            properly. Just keep moving one task at a time.
           </p>
+        </div>
+
+        <div
+          style={{
+            background: "#16213e",
+            border: "1px solid #4ecdc433",
+            borderRadius: 12,
+            padding: "12px 14px",
+            marginTop: 12,
+            maxWidth: 520,
+            marginLeft: "auto",
+            marginRight: "auto",
+            textAlign: "left",
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#4ecdc4" }}>
+            REALISTIC PUSH
+          </div>
+          <div style={{ fontSize: 12, color: "#ddd", lineHeight: 1.6, marginTop: 6 }}>
+            {motivationalQuote} If something is unclear, ask sister instead of
+            staying stuck.
+          </div>
         </div>
       </div>
 
@@ -1359,6 +1721,119 @@ export default function NinjaPlanner() {
           <>
             <OverallProgress progress={progress} />
 
+            <div
+              style={{
+                background: "#10131f",
+                border: "1px solid #1e1e3a",
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 18,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#eee" }}>
+                    Sister update panel
+                  </div>
+                  <div style={{ fontSize: 11, color: "#8e98ab", marginTop: 3 }}>
+                    Track completed tasks and send an email update when Muso
+                    wants to keep you posted.
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: "#ffd166", fontWeight: 700 }}>
+                  {doneTasks}/{totalTasks} done · {pct}%
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginTop: 12,
+                }}
+              >
+                <input
+                  value={sisterEmail}
+                  onChange={(event) => setSisterEmail(event.target.value)}
+                  placeholder="sister@email.com"
+                  style={{
+                    flex: "1 1 220px",
+                    background: "#0f0f1a",
+                    border: "1px solid #2c3144",
+                    borderRadius: 10,
+                    color: "#eee",
+                    padding: "10px 12px",
+                    fontFamily: "inherit",
+                    fontSize: 12,
+                  }}
+                />
+                <a
+                  href={progressUpdateHref || undefined}
+                  onClick={(event) => {
+                    if (!progressUpdateHref) {
+                      event.preventDefault();
+                    }
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: progressUpdateHref ? "#ffd166" : "#2c3144",
+                    color: progressUpdateHref ? "#0f0f1a" : "#556070",
+                    textDecoration: "none",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: progressUpdateHref ? "pointer" : "not-allowed",
+                  }}
+                >
+                  <Send size={13} />
+                  Send progress update
+                </a>
+              </div>
+
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                {completionLog.length > 0 ? (
+                  completionLog.slice(0, 3).map((item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        background: "#0f0f1a",
+                        border: "1px solid #1e1e3a",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        fontSize: 11,
+                        color: "#cbd5e1",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong style={{ color: courseColors[item.course] || "#ffd166" }}>
+                        Day {item.dayNum}:
+                      </strong>{" "}
+                      {item.course} · {item.focus} · {item.task}
+                      <div style={{ color: "#8e98ab", marginTop: 2 }}>
+                        {item.doneCount}/{item.totalTasks} done on that block · {item.pct}%
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: 11, color: "#8e98ab" }}>
+                    No completed tasks yet. The first checkmark will show up here.
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Phase labels */}
             <div
               style={{
@@ -1382,6 +1857,8 @@ export default function NinjaPlanner() {
                 day={day}
                 progress={progress}
                 setProgress={setProgress}
+                setCompletionLog={setCompletionLog}
+                sisterEmail={sisterEmail}
               />
             ))}
 
@@ -1408,6 +1885,8 @@ export default function NinjaPlanner() {
                   day={day}
                   progress={progress}
                   setProgress={setProgress}
+                  setCompletionLog={setCompletionLog}
+                  sisterEmail={sisterEmail}
                 />
               )
             )}
@@ -1434,6 +1913,8 @@ export default function NinjaPlanner() {
                 day={day}
                 progress={progress}
                 setProgress={setProgress}
+                setCompletionLog={setCompletionLog}
+                sisterEmail={sisterEmail}
               />
             ))}
 
@@ -1771,6 +2252,51 @@ export default function NinjaPlanner() {
             <div
               style={{
                 marginTop: 16,
+                background: "#10131f",
+                borderRadius: 14,
+                padding: 18,
+                border: "1px solid #1e1e3a",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Heart size={16} color="#ff6b6b" />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#eee" }}>
+                  Sister support and quotes
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: "#bbb", lineHeight: 1.7 }}>
+                <p style={{ margin: "0 0 8px" }}>
+                  If Muso does not understand something, he should hit the{" "}
+                  <strong style={{ color: "#ffd166" }}>Ask sister!</strong> button on the task and send a short note.
+                </p>
+                <p style={{ margin: "0 0 12px" }}>
+                  Keep the message short and clear. Example: Day 2, Ch2 system of linear equations, I do not know how to write 3 equations with 2 unknowns.
+                </p>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {MOTIVATIONAL_QUOTES.slice(0, 3).map((quote, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        background: "#0f0f1a",
+                        border: "1px solid #1e1e3a",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        color: "#ddd",
+                      }}
+                    >
+                      <div style={{ fontSize: 11, color: "#8e98ab", marginBottom: 4 }}>
+                        Quote {index + 1}
+                      </div>
+                      <div style={{ fontSize: 12, lineHeight: 1.6 }}>{quote}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: 16,
                 background: "#1a1a2e",
                 borderRadius: 14,
                 padding: 18,
@@ -1831,6 +2357,8 @@ export default function NinjaPlanner() {
                 ) {
                   setProgress({});
                   saveProgress({});
+                  setCompletionLog([]);
+                  saveCompletionLog([]);
                 }
               }}
               style={{
