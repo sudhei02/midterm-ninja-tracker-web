@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 
 const STORAGE_KEY = "muso-ninja-planner-v2";
-const SISTER_EMAIL_KEY = "muso-sister-email-v1";
 
 const loadProgress = () => {
   try {
@@ -44,14 +43,6 @@ const saveProgress = (p) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
   } catch {
     // Ignore storage write errors (private mode or storage limits).
-  }
-};
-
-const loadString = (key) => {
-  try {
-    return localStorage.getItem(key) || "";
-  } catch {
-    return "";
   }
 };
 
@@ -113,30 +104,6 @@ const getTaskStarter = (task, block) => {
   }
 
   return "Start small, then check your notes or slides.";
-};
-
-const buildTaskEmailHref = ({ sisterEmail, day, block, task, completedCount, totalTasks }) => {
-  if (!sisterEmail) return null;
-
-  const pct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-  const subject = `Day ${day.dayNum}: ${block.focus} - Muso needs help with ${task}`;
-  const body = [
-    `Hi Sister,`,
-    "",
-    `Muso is working on Day ${day.dayNum} (${day.day}).`,
-    `Course: ${block.course}`,
-    `Focus: ${block.focus}`,
-    `Task: ${task}`,
-    `Progress so far: ${completedCount}/${totalTasks} tasks complete (${pct}%).`,
-    "",
-    "He wants a quick hint or example.",
-    "",
-    "Please keep it short.",
-    "",
-    "Thank you.",
-  ].join("\n");
-
-  return `mailto:${sisterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
 
 const EXAM_INFO = [
@@ -892,8 +859,6 @@ function TaskItem({
   onToggle,
   sourceHint,
   starterHint,
-  askHref,
-  sisterEmail,
 }) {
   return (
     <div style={{ padding: "6px 0" }}>
@@ -958,49 +923,8 @@ function TaskItem({
           <strong style={{ color: "#cbd5e1" }}>Start:</strong>{" "}
           {starterHint}
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
-            marginTop: 8,
-          }}
-        >
-          <span style={{ fontSize: 10, color: "#7f8ea3" }}>
-            If stuck, ask sister.
-          </span>
-          <a
-            href={askHref || undefined}
-            onClick={(event) => {
-              if (!sisterEmail) {
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-              }
-              event.stopPropagation();
-            }}
-            onMouseDown={(event) => event.stopPropagation()}
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 0.4,
-              color: sisterEmail ? "#ffd166" : "#556070",
-              textDecoration: "none",
-              background: sisterEmail ? "#ffd16618" : "#1c2030",
-              border: `1px solid ${sisterEmail ? "#ffd16633" : "#2c3144"}`,
-              borderRadius: 999,
-              padding: "6px 10px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              cursor: sisterEmail ? "pointer" : "not-allowed",
-            }}
-          >
-            <MessageSquare size={11} />
-            Ask sister!
-          </a>
+        <div style={{ fontSize: 10, color: "#7f8ea3", marginTop: 8 }}>
+          If stuck, ask sister.
         </div>
       </div>
     </div>
@@ -1009,17 +933,14 @@ function TaskItem({
 
 function StudyBlock({
   block,
-  day,
   dayNum,
   blockIdx,
   progress,
   setProgress,
-  sisterEmail,
 }) {
   const style = priorityStyles[block.priority];
   const courseColor = courseColors[block.course] || "#888";
   const courseGuide = getCourseGuidance(block.course);
-  const totalTasks = block.tasks.length;
 
   const toggleTask = (taskIdx) => {
     const key = `${dayNum}-${blockIdx}-${taskIdx}`;
@@ -1128,15 +1049,6 @@ function StudyBlock({
             onToggle={() => toggleTask(i)}
             sourceHint={courseGuide.sources}
             starterHint={getTaskStarter(task, block)}
-            askHref={buildTaskEmailHref({
-              sisterEmail,
-              day,
-              block,
-              task,
-              completedCount,
-              totalTasks,
-            })}
-            sisterEmail={sisterEmail}
           />
         ))}
       </div>
@@ -1163,7 +1075,6 @@ function DayCard({
   day,
   progress,
   setProgress,
-  sisterEmail,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -1311,12 +1222,10 @@ function DayCard({
             <StudyBlock
               key={bi}
               block={block}
-              day={day}
               dayNum={day.dayNum}
               blockIdx={bi}
               progress={progress}
               setProgress={setProgress}
-              sisterEmail={sisterEmail}
             />
           ))}
         </div>
@@ -1418,7 +1327,6 @@ function OverallProgress({ progress }) {
 
 export default function NinjaPlanner() {
   const [progress, setProgress] = useState(loadProgress);
-  const sisterEmail = loadString(SISTER_EMAIL_KEY);
   const [tab, setTab] = useState("schedule");
 
   const totalTasks = SCHEDULE.reduce(
@@ -1635,7 +1543,6 @@ export default function NinjaPlanner() {
                 day={day}
                 progress={progress}
                 setProgress={setProgress}
-                sisterEmail={sisterEmail}
               />
             ))}
 
@@ -1662,7 +1569,6 @@ export default function NinjaPlanner() {
                   day={day}
                   progress={progress}
                   setProgress={setProgress}
-                  sisterEmail={sisterEmail}
                 />
               )
             )}
@@ -1689,7 +1595,6 @@ export default function NinjaPlanner() {
                 day={day}
                 progress={progress}
                 setProgress={setProgress}
-                sisterEmail={sisterEmail}
               />
             ))}
 
