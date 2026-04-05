@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Swords,
   Shield,
@@ -41,7 +41,9 @@ const loadProgress = () => {
 const saveProgress = (p) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
-  } catch {}
+  } catch {
+    // Ignore storage write errors (private mode or storage limits).
+  }
 };
 
 const EXAM_INFO = [
@@ -1321,7 +1323,10 @@ export default function NinjaPlanner() {
           { id: "schedule", label: "Battle Plan", icon: Scroll },
           { id: "exams", label: "Exam Intel", icon: Target },
           { id: "tools", label: "Ninja Tools", icon: Zap },
-        ].map(({ id, label, icon: I }) => (
+        ].map(({ id, label, icon }) => {
+          const Icon = icon;
+
+          return (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -1342,10 +1347,11 @@ export default function NinjaPlanner() {
               transition: "all 0.2s",
             }}
           >
-            <I size={14} />
+            <Icon size={14} />
             {label}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ padding: "16px 16px 0", maxWidth: 640, margin: "0 auto" }}>
