@@ -111,4 +111,29 @@ After pushing to the main branch:
 - The Vite base path is set to ./ in vite.config.js so it works from a repo subpath.
 - Progress is saved in browser localStorage under muso-ninja-planner-v2.
 
+## Cloud Save + Email Alerts (Netlify)
+
+This project now supports cloud save through a Netlify Function:
+
+- Endpoint: /.netlify/functions/progress
+- Storage: Netlify Blobs (no traditional database needed)
+- Behavior: browser progress saves locally and syncs to cloud automatically
+
+To enable email notifications when progress changes:
+
+1. Open your Netlify site dashboard.
+2. Go to Site configuration > Environment variables.
+3. Add these variables:
+
+   - RESEND_API_KEY = your Resend API key
+   - ADMIN_EMAIL = the inbox to receive alerts
+   - FROM_EMAIL = optional sender (default is onboarding@resend.dev)
+
+4. Redeploy the site.
+
+Important:
+
+- Your email must be valid format, for example suydinh01@gmail.com (with @).
+- The function has a short cooldown to avoid spamming too many emails from rapid checkbox clicks.
+
 Stay calm. Stay sharp. One mission at a time. 🥷
