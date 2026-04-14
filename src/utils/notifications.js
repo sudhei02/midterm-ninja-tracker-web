@@ -1,0 +1,84 @@
+const NOTIF_KEY = "muso-ninja-last-notif";
+const NTFY_KEY = "muso-ninja-last-ntfy";
+
+export function requestNotifPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+export function sendProgressNotif(doneTasks, totalTasks) {
+  if (!("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+
+  const pct = Math.round((doneTasks / totalTasks) * 100);
+  const milestone = Math.floor(pct / 5) * 5;
+  let lastMilestone;
+
+  try {
+    lastMilestone = parseInt(localStorage.getItem(NOTIF_KEY) || "0", 10);
+  } catch {
+    return;
+  }
+
+  if (milestone <= lastMilestone || milestone === 0) return;
+
+  try {
+    localStorage.setItem(NOTIF_KEY, String(milestone));
+  } catch {
+    return;
+  }
+
+  new Notification(`Muso hit ${pct}%!`, {
+    body: `${doneTasks}/${totalTasks} tasks done. Rank: ${getRank(pct)}`,
+    icon: "./ninja-favicon.png",
+  });
+}
+
+export function sendNtfyUpdate(doneTasks, totalTasks) {
+  const topic = import.meta.env.VITE_NTFY_TOPIC;
+  if (!topic) return;
+
+  const pct = Math.round((doneTasks / totalTasks) * 100);
+  const milestone = Math.floor(pct / 10) * 10;
+  let lastMilestone;
+
+  try {
+    lastMilestone = parseInt(localStorage.getItem(NTFY_KEY) || "0", 10);
+  } catch {
+    return;
+  }
+
+  if (milestone <= lastMilestone || milestone === 0) return;
+
+  try {
+    localStorage.setItem(NTFY_KEY, String(milestone));
+  } catch {
+    return;
+  }
+  const rank = getRank(pct);
+
+  fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
+    method: "POST",
+    headers: { Title: `Muso Progress: ${pct}%`, Tags: "ninja,chart_with_upwards_trend" },
+    body: `${doneTasks}/${totalTasks} tasks done. Rank: ${rank}`,
+  }).catch(() => {});
+}
+
+export function resetNotifications() {
+  try {
+    localStorage.removeItem(NOTIF_KEY);
+    localStorage.removeItem(NTFY_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function getRank(pct) {
+  return pct >= 100 ? "LEGENDARY NINJA"
+    : pct >= 75 ? "Shadow Master"
+    : pct >= 50 ? "Blade Runner"
+    : pct >= 25 ? "Apprentice"
+    : "Genin";
+}
