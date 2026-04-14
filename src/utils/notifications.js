@@ -59,11 +59,20 @@ export function sendNtfyUpdate(doneTasks, totalTasks) {
   }
   const rank = getRank(pct);
 
-  fetch(`https://ntfy.sh/${topic}`, {
+  fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
     method: "POST",
     headers: { Title: `Muso Progress: ${pct}%`, Tags: "ninja,chart_with_upwards_trend" },
     body: `${doneTasks}/${totalTasks} tasks done. Rank: ${rank}`,
   }).catch(() => {});
+}
+
+export function resetNotifications() {
+  try {
+    localStorage.removeItem(NOTIF_KEY);
+    localStorage.removeItem(NTFY_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
 }
 
 function getRank(pct) {

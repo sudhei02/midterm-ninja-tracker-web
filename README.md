@@ -12,7 +12,7 @@ I wanted him to stay focused, study with a clear plan, and walk into midterms wi
 
 ## What This Website Includes
 
-- Password-protected access
+- Client-side password gate (UI privacy screen, not server-side auth)
 - A day-by-day midterm training schedule (April 5-20, 2026)
 - Session blocks with exact focus topics and tasks
 - Live countdown to the next exam

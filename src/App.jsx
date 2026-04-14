@@ -22,7 +22,7 @@ import { MOTIVATIONAL_QUOTES } from "./data/constants";
 import { SCHEDULE } from "./data/schedule";
 import { EXAM_INFO } from "./data/exams";
 import { loadProgress, saveProgress } from "./utils/progress";
-import { requestNotifPermission, sendProgressNotif, sendNtfyUpdate } from "./utils/notifications";
+import { requestNotifPermission, sendProgressNotif, sendNtfyUpdate, resetNotifications } from "./utils/notifications";
 import PasswordGate from "./components/PasswordGate";
 import { isAuthenticated } from "./utils/auth";
 import OverallProgress from "./components/OverallProgress";
@@ -356,6 +356,7 @@ function ToolsTab({ setProgress }) {
           if (window.confirm("Reset ALL progress? This can't be undone, Muso.")) {
             setProgress({});
             saveProgress({});
+            resetNotifications();
           }
         }}
         className="mt-4 sm:mt-5 w-full bg-transparent border border-[#333] rounded-lg sm:rounded-[10px] py-2.5 text-[#555] cursor-pointer text-[11px] sm:text-xs font-[inherit]"

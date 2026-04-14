@@ -6,9 +6,13 @@ export default function PasswordGate({ onSuccess }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
 
+  const envPassword = import.meta.env.VITE_APP_PASSWORD;
+  const isMisconfigured = !envPassword;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (password === import.meta.env.VITE_APP_PASSWORD) {
+    if (isMisconfigured) return;
+    if (password === envPassword) {
       setAuthenticated();
       onSuccess();
     } else {
@@ -33,16 +37,22 @@ export default function PasswordGate({ onSuccess }) {
           <span className="text-sm font-bold text-ninja-text">Ninja Access</span>
         </div>
         <p className="text-[11px] text-ninja-text-dim mb-5">Enter the password to continue</p>
+        <label htmlFor="ninja-password" className="sr-only">Password</label>
         <input
+          id="ninja-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
           autoFocus
+          disabled={isMisconfigured}
           className={`w-full bg-ninja-bg border rounded-lg px-3 py-2.5 text-sm text-ninja-text placeholder-ninja-text-muted outline-none font-[inherit] ${
             error ? "border-ninja-red-light" : "border-ninja-border focus:border-ninja-red"
-          }`}
+          } ${isMisconfigured ? "opacity-50 cursor-not-allowed" : ""}`}
         />
+        {isMisconfigured && (
+          <p className="text-[11px] text-ninja-red-light mt-2">Password not configured. Set VITE_APP_PASSWORD in your environment.</p>
+        )}
         {error && (
           <p className="text-[11px] text-ninja-red-light mt-2">Wrong password, ninja.</p>
         )}
