@@ -1,9 +1,20 @@
 import { CheckCircle2, Circle } from "lucide-react";
 
 export default function TaskItem({ task, checked, onToggle }) {
+  const handleKeyDown = (event) => {
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      onToggle();
+    }
+  };
+
   return (
     <div
       onClick={onToggle}
+      onKeyDown={handleKeyDown}
+      role="checkbox"
+      tabIndex={0}
+      aria-checked={checked}
       className={`flex items-start gap-2 py-1.5 cursor-pointer transition-opacity ${
         checked ? "opacity-40" : "opacity-100"
       }`}
