@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A personal midterm study planner built for the developer's brother ("Muso"). It presents a 16-day schedule (April 5-20, 2026) covering 4 university exams (MATH103, MGMT211, ECON102, MGMT202) with day-by-day study blocks, task checklists, progress tracking, and email notifications. The tone is motivational and ninja-themed.
+A personal midterm study planner built for the developer's brother ("Muso"). It presents a 16-day schedule (April 5-20, 2026) covering 4 university exams (MATH103, MGMT211, ECON102, MGMT202) with day-by-day study blocks, task checklists, progress tracking, and browser notifications plus ntfy.sh push updates. The tone is motivational and ninja-themed.
 
 ## Commands
 
