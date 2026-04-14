@@ -14,10 +14,21 @@ export function sendProgressNotif(doneTasks, totalTasks) {
 
   const pct = Math.round((doneTasks / totalTasks) * 100);
   const milestone = Math.floor(pct / 5) * 5;
-  const lastMilestone = parseInt(localStorage.getItem(NOTIF_KEY) || "0", 10);
+  let lastMilestone;
+
+  try {
+    lastMilestone = parseInt(localStorage.getItem(NOTIF_KEY) || "0", 10);
+  } catch {
+    return;
+  }
 
   if (milestone <= lastMilestone || milestone === 0) return;
-  localStorage.setItem(NOTIF_KEY, String(milestone));
+
+  try {
+    localStorage.setItem(NOTIF_KEY, String(milestone));
+  } catch {
+    return;
+  }
 
   new Notification(`Muso hit ${pct}%!`, {
     body: `${doneTasks}/${totalTasks} tasks done. Rank: ${getRank(pct)}`,

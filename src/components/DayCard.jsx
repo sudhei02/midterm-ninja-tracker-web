@@ -33,9 +33,11 @@ export default function DayCard({ day, progress, setProgress }) {
           : "#0f0f1a",
       }}
     >
-      <div
+      <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="px-3 py-2.5 sm:py-3 cursor-pointer flex items-center gap-2.5 select-none"
+        aria-expanded={open}
+        className="w-full px-3 py-2.5 sm:py-3 cursor-pointer flex items-center gap-2.5 select-none text-left bg-transparent border-none"
       >
         <div
           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
@@ -74,7 +76,7 @@ export default function DayCard({ day, progress, setProgress }) {
           </span>
           {open ? <ChevronUp size={14} className="text-ninja-text-muted" /> : <ChevronDown size={14} className="text-ninja-text-muted" />}
         </div>
-      </div>
+      </button>
       {open && (
         <div className="px-3 pb-3 border-t border-ninja-border/50 pt-2">
           {day.blocks.map((block, bi) => (
