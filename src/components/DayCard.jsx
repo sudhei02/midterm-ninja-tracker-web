@@ -37,7 +37,7 @@ export default function DayCard({ day, progress, setProgress }) {
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="w-full px-3 py-2.5 sm:py-3 cursor-pointer flex items-center gap-2.5 select-none text-left bg-transparent border-none"
+        className="w-full px-3 py-2.5 sm:py-3 flex items-center gap-2.5 select-none text-left bg-transparent border-none"
       >
         <div
           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
