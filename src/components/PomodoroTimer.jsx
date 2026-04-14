@@ -1,10 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Coffee, Flame } from "lucide-react";
+import {
+  notifyTimerStarted,
+  notifyTimerPaused,
+  notifyTimerReset,
+  notifyTimerCompleted,
+} from "../utils/notifications";
+
+const FOCUS_SECONDS = 25 * 60;
+const BREAK_SECONDS = 5 * 60;
 
 export default function PomodoroTimer() {
-  const [seconds, setSeconds] = useState(25 * 60);
+  const [seconds, setSeconds] = useState(FOCUS_SECONDS);
   const [running, setRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
+  // Track live values for notifications without triggering re-renders
+  const secondsRef = useRef(seconds);
+  const isBreakRef = useRef(isBreak);
+  useEffect(() => { secondsRef.current = seconds; }, [seconds]);
+  useEffect(() => { isBreakRef.current = isBreak; }, [isBreak]);
 
   useEffect(() => {
     if (!running) return;
@@ -12,14 +26,46 @@ export default function PomodoroTimer() {
       setSeconds((s) => {
         if (s <= 1) {
           setRunning(false);
+          try {
+            const finishedMode = isBreakRef.current ? "break" : "focus";
+            const minutes = finishedMode === "focus" ? 25 : 5;
+            notifyTimerCompleted(finishedMode, minutes);
+          } catch (err) {
+            console.warn("[ninja] notifyTimerCompleted failed", err);
+          }
           setIsBreak((b) => !b);
-          return isBreak ? 25 * 60 : 5 * 60;
+          return isBreakRef.current ? FOCUS_SECONDS : BREAK_SECONDS;
         }
         return s - 1;
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [running, isBreak]);
+  }, [running]);
+
+  const handleStartPause = () => {
+    try {
+      const mode = isBreak ? "break" : "focus";
+      if (running) {
+        notifyTimerPaused(mode, secondsRef.current);
+      } else {
+        notifyTimerStarted(mode);
+      }
+    } catch (err) {
+      console.warn("[ninja] handleStartPause notify failed", err);
+    }
+    setRunning(!running);
+  };
+
+  const handleReset = () => {
+    try {
+      const mode = isBreak ? "break" : "focus";
+      notifyTimerReset(mode);
+    } catch (err) {
+      console.warn("[ninja] handleReset notify failed", err);
+    }
+    setRunning(false);
+    setSeconds(isBreak ? BREAK_SECONDS : FOCUS_SECONDS);
+  };
 
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -51,7 +97,7 @@ export default function PomodoroTimer() {
       </span>
       <div className="flex gap-2">
         <button
-          onClick={() => setRunning(!running)}
+          onClick={handleStartPause}
           className={`border border-ninja-red rounded-lg px-3 sm:px-4 py-1.5 cursor-pointer font-semibold text-[12px] sm:text-[13px] font-[inherit] ${
             running
               ? "bg-ninja-red/20 text-ninja-red"
@@ -61,10 +107,7 @@ export default function PomodoroTimer() {
           {running ? "Pause" : "Start"}
         </button>
         <button
-          onClick={() => {
-            setRunning(false);
-            setSeconds(isBreak ? 5 * 60 : 25 * 60);
-          }}
+          onClick={handleReset}
           className="bg-transparent text-ninja-text-muted border border-[#333] rounded-lg px-2.5 sm:px-3 py-1.5 cursor-pointer text-[12px] sm:text-[13px] font-[inherit]"
         >
           Reset

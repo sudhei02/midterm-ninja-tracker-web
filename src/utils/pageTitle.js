@@ -1,6 +1,6 @@
 // Sequence of title "scenes" - each runs in order, then the whole cycle repeats.
-// Slower pace: 350ms per frame for readability.
-const FRAME_MS = 350;
+// Slower pace: 500ms per frame for readability.
+const FRAME_MS = 500;
 const DEFAULT_TITLE = "Midterm Ninja Planner";
 
 // Scene 1: Ninja slowly pushes the text from right to left across the tab

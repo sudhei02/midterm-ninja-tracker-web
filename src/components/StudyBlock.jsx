@@ -2,7 +2,14 @@ import { Clock, Sparkles } from "lucide-react";
 import { priorityStyles, courseColors } from "../data/constants";
 import { getCourseGuidance } from "../utils/helpers";
 import { saveProgress } from "../utils/progress";
+import { notifyTaskChecked, notifyTaskUnchecked } from "../utils/notifications";
+import { SCHEDULE } from "../data/schedule";
 import TaskItem from "./TaskItem";
+
+const TOTAL_TASKS = SCHEDULE.reduce(
+  (a, day) => a + day.blocks.reduce((b, bl) => b + bl.tasks.length, 0),
+  0
+);
 
 export default function StudyBlock({ block, dayNum, blockIdx, progress, setProgress }) {
   const pStyle = priorityStyles[block.priority];
@@ -10,12 +17,29 @@ export default function StudyBlock({ block, dayNum, blockIdx, progress, setProgr
   const courseGuide = getCourseGuidance(block.course);
 
   const toggleTask = (taskIdx) => {
-    const key = `${dayNum}-${blockIdx}-${taskIdx}`;
-    setProgress((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      saveProgress(next);
-      return next;
-    });
+    try {
+      const key = `${dayNum}-${blockIdx}-${taskIdx}`;
+      const wasChecked = !!progress[key];
+      setProgress((prev) => {
+        const next = { ...prev, [key]: !prev[key] };
+        try { saveProgress(next); } catch (err) { console.warn("[ninja] saveProgress failed", err); }
+        try {
+          const doneNow = Object.values(next).filter(Boolean).length;
+          const pct = Math.round((doneNow / TOTAL_TASKS) * 100);
+          const task = block.tasks[taskIdx];
+          if (wasChecked) {
+            notifyTaskUnchecked(task, block.course, pct, doneNow, TOTAL_TASKS);
+          } else {
+            notifyTaskChecked(task, block.course, pct, doneNow, TOTAL_TASKS);
+          }
+        } catch (err) {
+          console.warn("[ninja] task notify failed", err);
+        }
+        return next;
+      });
+    } catch (err) {
+      console.warn("[ninja] toggleTask failed", err);
+    }
   };
 
   const completedCount = block.tasks.filter(
