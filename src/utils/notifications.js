@@ -31,11 +31,21 @@ export function sendNtfyUpdate(doneTasks, totalTasks) {
 
   const pct = Math.round((doneTasks / totalTasks) * 100);
   const milestone = Math.floor(pct / 10) * 10;
-  const lastMilestone = parseInt(localStorage.getItem(NTFY_KEY) || "0", 10);
+  let lastMilestone;
+
+  try {
+    lastMilestone = parseInt(localStorage.getItem(NTFY_KEY) || "0", 10);
+  } catch {
+    return;
+  }
 
   if (milestone <= lastMilestone || milestone === 0) return;
-  localStorage.setItem(NTFY_KEY, String(milestone));
 
+  try {
+    localStorage.setItem(NTFY_KEY, String(milestone));
+  } catch {
+    return;
+  }
   const rank = getRank(pct);
 
   fetch(`https://ntfy.sh/${topic}`, {
