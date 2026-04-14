@@ -25,6 +25,7 @@ import { loadProgress, saveProgress } from "./utils/progress";
 import { requestNotifPermission, sendProgressNotif, sendNtfyUpdate, resetNotifications } from "./utils/notifications";
 import PasswordGate from "./components/PasswordGate";
 import { isAuthenticated } from "./utils/auth";
+import { startNinjaTitle, stopNinjaTitle } from "./utils/pageTitle";
 import OverallProgress from "./components/OverallProgress";
 import ExamCountdown from "./components/ExamCountdown";
 import DayCard from "./components/DayCard";
@@ -55,6 +56,12 @@ const SURVIVAL_RULES = [
 
 export default function NinjaPlanner() {
   const [authed, setAuthed] = useState(isAuthenticated);
+
+  useEffect(() => {
+    if (authed) startNinjaTitle();
+    else stopNinjaTitle();
+    return () => stopNinjaTitle();
+  }, [authed]);
 
   if (!authed) return <PasswordGate onSuccess={() => setAuthed(true)} />;
 
