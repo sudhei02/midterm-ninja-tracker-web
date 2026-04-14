@@ -18,7 +18,7 @@ I wanted him to stay focused, study with a clear plan, and walk into midterms wi
 - Live countdown to the next exam
 - Progress check system saved in your browser
 - Ninja rank system (Genin to Legendary Ninja)
-- Email notifications to sister on progress milestones
+- Push notifications to sister via ntfy.sh on progress milestones
 - Browser notifications on every 5% milestone
 - Pomodoro timer (25 min focus / 5 min break)
 - ADHD-friendly study tips
@@ -52,20 +52,16 @@ I wanted him to stay focused, study with a clear plan, and walk into midterms wi
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_APP_PASSWORD` | Yes | Password for the login screen |
-| `VITE_EMAILJS_SERVICE_ID` | No | EmailJS service ID |
-| `VITE_EMAILJS_TEMPLATE_ID` | No | EmailJS template ID |
-| `VITE_EMAILJS_PUBLIC_KEY` | No | EmailJS public key |
-| `VITE_NOTIFY_EMAIL` | No | Email address to receive progress updates |
+| `VITE_NTFY_TOPIC` | No | ntfy.sh topic for push notifications |
 
-## Email Notifications Setup
+## Push Notifications Setup (ntfy.sh)
 
-1. Create a free account at [emailjs.com](https://www.emailjs.com)
-2. Create an email service and template
-3. Template variables: `to_email`, `subject`, `message`, `progress`, `rank`
-4. Copy the service ID, template ID, and public key into your `.env`
-5. Set `VITE_NOTIFY_EMAIL` to the email address you want notifications sent to
+1. Pick a secret topic name (e.g. `muso-ninja-secret-abc123`)
+2. Set `VITE_NTFY_TOPIC` in your `.env` to that topic name
+3. Subscribe on your phone: install the [ntfy app](https://ntfy.sh) and subscribe to the same topic
+4. You'll get a push notification every 10% progress milestone
 
-Emails are sent at every 10% progress milestone.
+No account needed. No API keys. Just a topic name.
 
 ## Build for Production
 
@@ -87,6 +83,6 @@ This project is deployed at `midterm-ninja-tracker-web.netlify.app`.
 - React 19 + Vite 8
 - Tailwind CSS v4
 - Lucide React icons
-- EmailJS (browser-side email)
+- ntfy.sh (push notifications)
 
 Stay calm. Stay sharp. One mission at a time.

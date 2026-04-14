@@ -29,7 +29,7 @@ Single-page React + Tailwind CSS v4 app. The root `NinjaPlanner` component gates
 - `helpers.js` — `getCourseGuidance` (per-course resource hints)
 - `dates.js` — `getTodayDayNum`, `getNextExam`, `getCountdown`, `getDynamicDaysUntil` (live date calculations)
 - `auth.js` — session-based password gate (reads `VITE_APP_PASSWORD` from env)
-- `notifications.js` — browser Notification API + EmailJS email updates on progress milestones
+- `notifications.js` — browser Notification API + ntfy.sh push updates on progress milestones
 
 **`src/components/`** — UI components:
 - `PasswordGate.jsx` — login screen, checks password against env var
@@ -48,8 +48,7 @@ Single-page React + Tailwind CSS v4 app. The root `NinjaPlanner` component gates
 
 Configured via `.env` (see `.env.example`):
 - `VITE_APP_PASSWORD` — required, password for the login gate
-- `VITE_EMAILJS_SERVICE_ID` / `VITE_EMAILJS_TEMPLATE_ID` / `VITE_EMAILJS_PUBLIC_KEY` — EmailJS credentials (optional, emails silently skip if not set)
-- `VITE_NOTIFY_EMAIL` — target email address for progress updates
+- `VITE_NTFY_TOPIC` — ntfy.sh topic name for push notifications (optional, silently skips if not set)
 
 ## Deployment
 

@@ -22,7 +22,7 @@ import { MOTIVATIONAL_QUOTES } from "./data/constants";
 import { SCHEDULE } from "./data/schedule";
 import { EXAM_INFO } from "./data/exams";
 import { loadProgress, saveProgress } from "./utils/progress";
-import { requestNotifPermission, sendProgressNotif, sendEmailUpdate } from "./utils/notifications";
+import { requestNotifPermission, sendProgressNotif, sendNtfyUpdate } from "./utils/notifications";
 import PasswordGate from "./components/PasswordGate";
 import { isAuthenticated } from "./utils/auth";
 import OverallProgress from "./components/OverallProgress";
@@ -80,7 +80,7 @@ function NinjaPlannerInner() {
   useEffect(() => {
     if (totalTasks > 0) {
       sendProgressNotif(doneTasks, totalTasks);
-      sendEmailUpdate(doneTasks, totalTasks);
+      sendNtfyUpdate(doneTasks, totalTasks);
     }
   }, [doneTasks, totalTasks]);
 
